@@ -1,0 +1,13 @@
+/dist/
+vmtest/appdir/
+*.syso
+*.img
+*.img.bz2
+*.wsl
+vmtest/*.iso
+vmtest/*.qcow2
+vmtest/usb.img
+vmtest/OVMF_VARS.fd
+vmtest/tpm/
+vmtest/payload/
+vmtest/mido.sh

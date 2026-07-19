@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNGI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="shell">
+    <aside id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SNGI</div>
+        <div>
+          <div class="brand-name">SNGI</div>
+          <div class="brand-sub">USB installer builder</div>
+        </div>
+      </div>
+      <nav id="steps">
+        <div class="step" data-step="check"><span class="dot">1</span> System check</div>
+        <div class="step" data-step="builder"><span class="dot">2</span> Builder setup</div>
+        <div class="step" data-step="image"><span class="dot">3</span> Recovery image</div>
+        <div class="step" data-step="build"><span class="dot">4</span> Build</div>
+        <div class="step" data-step="flash"><span class="dot">5</span> Flash USB</div>
+        <div class="step" data-step="done"><span class="dot">6</span> Finished</div>
+      </nav>
+      <div class="side-foot">
+        <button id="btn-remove-builder" class="ghost tiny" title="Deletes the private WSL build distro (~20 GB)">Remove builder…</button>
+        <div class="disclaimer">Not affiliated with Valve or NVIDIA.</div>
+      </div>
+    </aside>
+
+    <main id="content">
+
+      <!-- 1 · SYSTEM CHECK -->
+      <section class="pane" data-pane="check">
+        <h1>System check</h1>
+        <p class="lede">This app turns Valve's official SteamOS recovery image into a bootable
+        USB installer with the NVIDIA driver baked in — built locally in a private WSL2 Linux
+        environment, nothing redistributed.</p>
+        <ul id="checklist" class="checklist"></ul>
+        <div id="check-warnings" class="warnings"></div>
+        <div class="log-wrap hidden" id="wsl-logwrap"><pre id="wsl-log" class="log"></pre></div>
+        <div class="actions">
+          <button id="btn-install-wsl" class="secondary hidden">Install WSL 2</button>
+          <button id="btn-recheck" class="ghost">Re-check</button>
+          <span class="spacer"></span>
+          <button id="btn-check-next" class="primary" disabled>Continue →</button>
+        </div>
+      </section>
+
+      <!-- 2 · BUILDER SETUP -->
+      <section class="pane" data-pane="builder">
+        <h1>Builder setup</h1>
+        <p class="lede">A private Arch Linux environment (<code>steamos-builder</code>) is created
+        inside WSL2 to do the heavy lifting: compiling the NVIDIA kernel module against SteamOS's
+        exact kernel. One-time, ~2 GB, fully removable later.</p>
+        <div class="progress-wrap hidden" id="setup-progresswrap">
+          <div class="progress"><div id="setup-progressbar" class="bar"></div></div>
+          <div id="setup-progresstext" class="progress-text"></div>
+        </div>
+        <div class="log-wrap"><pre id="setup-log" class="log">Ready.</pre></div>
+        <div class="actions">
+          <button id="btn-setup" class="primary">Set up builder</button>
+          <button id="btn-setup-cancel" class="danger hidden">Cancel</button>
+          <span class="spacer"></span>
+          <button id="btn-builder-next" class="primary" disabled>Continue →</button>
+        </div>
+      </section>
+
+      <!-- 3 · IMAGE -->
+      <section class="pane" data-pane="image">
+        <h1>SteamOS recovery image</h1>
+        <p class="lede">Valve requires you to download the recovery image yourself and accept
+        their terms on the download page. Get it, then drop the file below —
+        no need to extract it, the <code>.img.bz2</code> is fine as-is.</p>
+        <div class="actions inline">
+          <button id="btn-valve" class="secondary">Open Valve's download page ↗</button>
+        </div>
+        <div id="dropzone" class="dropzone" style="--wails-drop-target: drop;">
+          <div class="dz-icon">⤓</div>
+          <div class="dz-text"><strong>Drag the downloaded image here</strong><br>
+            <span>steamdeck-recovery-*.img.bz2 — or</span></div>
+          <button id="btn-browse" class="secondary">Browse…</button>
+        </div>
+        <div id="image-info" class="filecard hidden"></div>
+        <details class="advanced">
+          <summary>Advanced build options</summary>
+          <label class="opt"><input type="radio" name="updmode" value="selfheal" checked>
+            <span><strong>Self-healing updates</strong> (recommended) — OS updates from inside Steam keep working; the driver is rebuilt automatically.</span></label>
+          <label class="opt"><input type="radio" name="updmode" value="hold">
+            <span><strong>Hold updates</strong> — Steam always reports "up to date".</span></label>
+          <label class="opt"><input type="radio" name="updmode" value="stock">
+            <span><strong>Stock updates</strong> — an OS update will remove the driver. Not recommended.</span></label>
+          <label class="opt"><input type="checkbox" id="opt-trimcuda">
+            <span><strong>Trim CUDA/OpenCL</strong> — ~350 MB smaller image; gaming unaffected.</span></label>
+          <label class="opt"><input type="checkbox" id="opt-skipsig">
+            <span><strong>Skip pacman signature checks</strong> — only if the build fails with keyring errors.</span></label>
+        </details>
+        <div class="actions">
+          <span class="spacer"></span>
+          <button id="btn-image-next" class="primary" disabled>Continue →</button>
+        </div>
+      </section>
+
+      <!-- 4 · BUILD -->
+      <section class="pane" data-pane="build">
+        <h1>Build the installer image</h1>
+        <p class="lede">The image is copied into the builder, the current NVIDIA open driver is
+        fetched from Arch Linux and compiled against SteamOS's kernel, and a one-click installer
+        is added. Takes roughly <strong>15–30 minutes</strong>.</p>
+        <div class="progress-wrap hidden" id="build-progresswrap">
+          <div class="progress"><div id="build-progressbar" class="bar"></div></div>
+          <div id="build-progresstext" class="progress-text"></div>
+        </div>
+        <div class="log-wrap tall"><pre id="build-log" class="log">Ready to build.</pre></div>
+        <div class="actions">
+          <button id="btn-build" class="primary">Start build</button>
+          <button id="btn-build-cancel" class="danger hidden">Cancel build</button>
+          <span class="spacer"></span>
+          <button id="btn-build-next" class="primary" disabled>Continue →</button>
+        </div>
+      </section>
+
+      <!-- 5 · FLASH -->
+      <section class="pane" data-pane="flash">
+        <h1>Flash to USB</h1>
+        <p class="lede" id="flash-lede">Plug in a USB stick of 16 GB or more.</p>
+        <div id="output-card" class="filecard hidden"></div>
+        <div class="actions inline">
+          <button id="btn-refresh-disks" class="secondary">↻ Refresh drives</button>
+        </div>
+        <div id="disklist" class="disklist"><div class="empty">No USB drives found yet.</div></div>
+        <div class="warnbox" id="flash-warn">⚠ Everything on the selected drive will be <strong>permanently erased</strong>.</div>
+        <div class="progress-wrap hidden" id="flash-progresswrap">
+          <div class="progress"><div id="flash-progressbar" class="bar"></div></div>
+          <div id="flash-progresstext" class="progress-text"></div>
+        </div>
+        <div class="log-wrap short"><pre id="flash-log" class="log"></pre></div>
+        <div class="actions">
+          <button id="btn-flash" class="primary" disabled>Flash USB drive</button>
+          <button id="btn-flash-cancel" class="danger hidden">Cancel</button>
+        </div>
+      </section>
+
+      <!-- 6 · DONE -->
+      <section class="pane" data-pane="done">
+        <h1>USB installer ready 🎉</h1>
+        <p class="lede">Take the USB stick to the target machine:</p>
+        <ol class="final-steps">
+          <li>Enter the target machine's UEFI settings and <strong>disable Secure Boot</strong>.</li>
+          <li>Boot from the USB stick (UEFI boot menu, usually F8/F11/F12/Del).</li>
+          <li>It boots into a SteamOS desktop. Double-click
+            <strong>“Install SteamOS (NVIDIA) to Hard Drive”</strong>
+            (or <strong>Upgrade</strong> to keep games &amp; data on an existing install).</li>
+          <li>Pick the target disk and confirm. The machine powers off when done.</li>
+          <li>Remove the USB stick and boot — first boot lands in Steam's setup.</li>
+        </ol>
+        <div class="notebox">Needs an NVIDIA <strong>RTX 20-series or newer</strong> GPU.
+        If the first boot looks black for a while, wait — SteamOS hides its boot console.</div>
+        <div class="actions">
+          <button id="btn-flash-another" class="secondary">Flash another USB stick</button>
+          <span class="spacer"></span>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
