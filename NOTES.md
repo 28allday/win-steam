@@ -1,9 +1,36 @@
-# SNGI — status & next steps (updated 2026-07-19, session 2)
+# SNGI — status & next steps (updated 2026-07-19, session 3)
 
-**FULL E2E PASSED IN THE VM.** Build → flash → host verify → the flashed
-usb.img boots in QEMU to the SteamOS recovery desktop with both custom
-installer icons. Three product bugs were found and fixed along the way —
-all would have hit every real Windows user.
+**PUBLISHED.** Public repo at <https://github.com/28allday/win-steam>
+(28allday GitHub ONLY — no Forgejo mirror, per Gav). Release **v0.1.0**
+is live with `SNGI.exe` attached; README "Download" section points at
+`releases/latest` and covers the SmartScreen warning.
+
+**FULL E2E PASSED IN THE VM** (session 2). Build → flash → host verify →
+the flashed usb.img boots in QEMU to the SteamOS recovery desktop with
+both custom installer icons. Three product bugs were found and fixed
+along the way — all would have hit every real Windows user.
+
+## Cutting a new release (manual, no CI — deliberate choice)
+
+```bash
+cd ~/Projects/win_steam
+./build.sh                                   # → dist/SNGI.exe
+git tag v0.1.1 && git push origin master v0.1.1
+gh release create v0.1.1 dist/SNGI.exe --title "SNGI v0.1.1" --notes "..."
+```
+
+Identity: 28allday / gavin.nugent@hey.com (desktop global — already right).
+
+## Repo gotchas (learned at publish time)
+
+- `.gitignore` uses **anchored `/dist/`** — a bare `dist/` also swallowed
+  `frontend/dist/`, which is hand-written embedded UI SOURCE (no build
+  step); ignoring it makes fresh clones fail to compile. Don't "tidy"
+  this back.
+- `vmtest/appdir/` is ignored (stale exe copy for the VM's app.iso).
+- Root `steamos-nvidia-installer.sh` = pristine upstream reference;
+  `scripts/steamos-nvidia-installer.sh` = the embedded one with the 3
+  sed transforms (see README "Syncing"). Both are committed on purpose.
 
 ## Where things stand
 
@@ -59,7 +86,8 @@ PARTLABEL is empty without udev). vmctl.sh `type` learned | ' " = ; ( ) $ % ~.
       (snapshot or reinstall — current VM is past that stage)
 - [ ] Real hardware: Windows box + real USB stick + boot it on the RTX rig
 - [ ] Code-signing story for SmartScreen (unsigned exe → "Run anyway")
-- [ ] Git init + first push — ASK Gavin public/private first (no repo yet)
+- [x] Git init + first push — DONE 2026-07-19: public 28allday/win-steam,
+      v0.1.0 released with exe
 
 ## To drive the VM again
 
