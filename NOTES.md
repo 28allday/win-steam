@@ -1,4 +1,71 @@
-# SNGI — status & next steps (updated 2026-07-19, session 3)
+# SNGI — status & next steps (updated 2026-07-25, session 4)
+
+## Session 4 — driver version picker (script path E2E-VERIFIED)
+
+The installer script grew `--driver SPEC` (`latest` | `580` | `580.105.08` |
+`580.105.08-4`) and the GUI grew a **NVIDIA driver** dropdown on the image
+step. Default is unchanged (`latest`), so the previously verified path is
+byte-for-byte the same package set.
+
+- Branch list in the GUI is fetched live from
+  `archive.archlinux.org/packages/n/nvidia-utils/` (`ListDriverOptions` in
+  `app.go`), filtered to ≥575, newest 6, each labelled with its newest
+  build. Static fallback only if that fetch fails.
+- Script resolves **nvidia-utils first**, then pins `nvidia-open-dkms` +
+  `lib32-nvidia-utils` to the same pkgver, then adds `egl-wayland2` **only
+  if the chosen nvidia-utils depends on it** (it became a dep at 590 —
+  575/580 must NOT get it).
+- **Don't "fix" the dep handling to pin every missing dep from Arch.** The
+  image genuinely lacks egl-wayland/egl-gbm/egl-x11 (verified: its holo db
+  has only glibc + libglvnd of that set) — those come from *Valve's frozen
+  mirror* inside the build chroot, and must keep coming from there.
+  egl-wayland2 is special because Valve's repo predates it entirely.
+- Changing branch with a warm `--workdir` clears the overlay upper +
+  ovlwork automatically (cached pacman downloads kept); full recompile.
+- `driver.conf` in the image now also records `DRIVER_SPEC`; the self-heal
+  repatch already followed `PKG_URLS`, so the choice propagates across OS
+  updates for free.
+
+Verified: resolution + download for 575/580/590/595/610/latest and
+exact-version specs against the live archive; egl-wayland2 appears only for
+590+; shellcheck clean; `go vet` + Windows build clean; the branch scraper
+returns 610/595/590/580/575 with correct newest versions.
+
+**FULL BUILD with `--driver 575` PASSED on the Linux desktop (2026-07-25):**
+nvidia-open 575.64.05-2 compiled cleanly against the image's
+`6.16.12-valve24.4-1-neptune-616` kernel (older branch vs newer kernel was
+the real risk — it's fine); payload came out as `egl-gbm egl-wayland egl-x11
+eglexternalplatform lib32-nvidia-utils nvidia-utils` with **no**
+egl-wayland2; installed `nvidia.ko` reports 575.64.05; `driver.conf` in the
+image has `DRIVER_SPEC="575"` + the three archive URLs. Artifacts deleted
+after. The GUI dropdown itself has NOT been clicked in the Windows VM yet.
+
+**GUI PATH VERIFIED IN THE WINDOWS VM (2026-07-25):** dropdown populated
+live from the archive *from inside Windows* (Latest + 610/595/590/580/575
+with versions), picking "575 branch" carried through to
+`--driver 575` in WSL — build log showed `Resolving NVIDIA driver packages
+from Arch Linux (--driver 575)` → `nvidia-utils 575.64.05-2`,
+`nvidia-open-dkms 575.64.05-2`, `lib32-nvidia-utils 575.64.05-1` and **no
+egl-wayland2**. Cancelled there (the full compile was already proven
+natively). Cancel button still works.
+
+Layout fix that came out of it: the picker pushed **Continue** below the
+fold at the 1280x800 minimum window size once a file card was showing.
+Trimmed the picker (one-line hint, `grid-column: 2`), dropzone padding
+30→22, and filecard/lede margins; re-verified in the VM that everything
+fits without scrolling. Watch this when adding anything else to that pane.
+
+Host gotcha from that run: inspecting an image by hand with `losetup -rP`
+lets **udisks automount** every partition into `/run/media/gav/` (the script
+blocks this with its own udev rule during a real run) — unmount those, and
+note btrfs may then hold the loop device until reboot
+(`btrfs device scan --forget` says EBUSY).
+
+Upstream `~/Projects/steam break down/steamos-nvidia-installer.sh` carries
+the identical change (it's the canonical copy) + README docs. Neither repo
+has been committed or pushed for this feature.
+
+# SNGI — session 3 notes (2026-07-19)
 
 **PUBLISHED.** Public repo at <https://github.com/28allday/win-steam>
 (28allday GitHub ONLY — no Forgejo mirror, per Gav). Release **v0.1.0**
@@ -79,6 +146,9 @@ PARTLABEL is empty without udev). vmctl.sh `type` learned | ' " = ; ( ) $ % ~.
 
 ## Still to test
 
+- [x] A build with `--driver 575` end to end — PASSED 2026-07-25 on the
+      Linux desktop, and the GUI dropdown → `--driver 575` path PASSED in
+      the Windows VM the same day (see session 4 above).
 - [ ] Drag-and-drop of the image file (only Browse tested — needs a real
       Explorer drag; hard to fake via QMP)
 - [ ] "Remove builder…" button

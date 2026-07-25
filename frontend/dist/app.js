@@ -14,6 +14,7 @@ const state = {
   disk: null,      // selected disk number
   furthest: 0,     // highest step index reached
   confirmArmed: null,
+  driversLoaded: false,
 };
 
 function App() { return window.go.main.App; }
@@ -32,6 +33,10 @@ function show(step) {
     s.classList.toggle("done", i < idx || (i <= state.furthest && i < idx));
   });
   if (step === "flash") enterFlash();
+  if (step === "image" && !state.driversLoaded) {
+    state.driversLoaded = true;
+    loadDriverOptions();
+  }
 }
 
 document.querySelectorAll(".step").forEach(s => {
@@ -179,6 +184,24 @@ async function acceptImage(promise) {
   }
 }
 
+// The driver list comes from the Arch archive at runtime, so a new branch
+// shows up without a new build of this app.
+async function loadDriverOptions() {
+  let opts = [];
+  try { opts = await App().ListDriverOptions() || []; } catch (e) { /* keep the default */ }
+  if (!opts.length) return;
+  const sel = $("opt-driver");
+  const previous = sel.value;
+  sel.innerHTML = "";
+  for (const o of opts) {
+    const el = document.createElement("option");
+    el.value = o.value;
+    el.textContent = o.note ? `${o.label} — ${o.note}` : o.label;
+    sel.appendChild(el);
+  }
+  if ([...sel.options].some(o => o.value === previous)) sel.value = previous;
+}
+
 $("btn-browse").addEventListener("click", () => acceptImage(App().ChooseImage()));
 $("dropzone").addEventListener("click", (e) => {
   if (e.target.id !== "btn-browse") acceptImage(App().ChooseImage());
@@ -191,6 +214,7 @@ function buildOpts() {
   return {
     imagePath: state.image.path,
     updateMode: document.querySelector('input[name="updmode"]:checked').value,
+    driver: $("opt-driver").value,
     trimCuda: $("opt-trimcuda").checked,
     skipSig: $("opt-skipsig").checked,
   };

@@ -84,6 +84,12 @@
           <button id="btn-browse" class="secondary">Browse…</button>
         </div>
         <div id="image-info" class="filecard hidden"></div>
+        <div class="pickrow">
+          <label for="opt-driver"><strong>NVIDIA driver</strong></label>
+          <select id="opt-driver"><option value="latest">Latest (recommended)</option></select>
+          <p class="hint" id="driver-hint">Compiled from Arch Linux packages — SteamOS itself ships
+            575. RTX 20-series or newer on any branch.</p>
+        </div>
         <details class="advanced">
           <summary>Advanced build options</summary>
           <label class="opt"><input type="radio" name="updmode" value="selfheal" checked>

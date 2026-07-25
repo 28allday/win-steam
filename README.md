@@ -46,10 +46,11 @@ Wizard steps:
    tools, verifies the WSL2 kernel has btrfs/overlayfs/loop support.
 3. **Recovery image** — opens Valve's download page; the user drags the
    downloaded `steamdeck-recovery-*.img.bz2` into the app (or browses).
-   No extraction needed.
+   No extraction needed. Same step picks the **NVIDIA driver branch** (see
+   below) and the advanced build options.
 4. **Build** — copies the image into the builder and runs
    `steamos-nvidia-installer.sh` (embedded, byte-identical to upstream except
-   one `udevadm || true` guard — no udev daemon under WSL2). Live log
+   three single-line WSL2 guards — see *Syncing* below). Live log
    streaming. 15–30 min.
 5. **Flash** — lists USB-bus disks only (never boot/system disks),
    double-click-to-confirm, raw-writes the image read straight from
@@ -59,6 +60,32 @@ Wizard steps:
 
 The builder distro is reusable (cached driver builds) and removable from the
 sidebar (~20 GB back).
+
+## Choosing the NVIDIA driver
+
+SteamOS's own mirror pins an older **575.x**. By default SNGI installs
+whatever `nvidia-open` current Arch Linux ships — but the image step has a
+**NVIDIA driver** dropdown to pick a specific branch instead (575, 580, 590,
+595, 610 …).
+
+The list is read live from the
+[Arch package archive](https://archive.archlinux.org/packages/n/nvidia-utils/)
+when the app reaches that step, so a branch released after this app was built
+still shows up, with the exact newest build of each branch next to it.
+
+Whatever is chosen is resolved once, pinned to permanent
+`archive.archlinux.org` URLs, and recorded in the installed system
+(`/usr/lib/steamos-nvidia/driver.conf`) — so the self-healing update path
+rebuilds *that same* driver after a SteamOS update rather than drifting to
+another version. `nvidia-open` needs Turing (RTX 20-series) or newer on every
+branch.
+
+Switching branches and rebuilding is fine: the builder notices the cached
+build is a different version and clears the build overlay first (the package
+cache is kept). It costs a full 15–30 min compile again.
+
+On the CLI the same thing is `--driver 580` (or `--driver 580.105.08`, or a
+full `580.105.08-4`) on `steamos-nvidia-installer.sh`.
 
 ## Layout
 

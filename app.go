@@ -14,6 +14,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -568,11 +570,139 @@ func (a *App) OpenValveHelp() {
 	runtime.BrowserOpenURL(a.ctx, valveHelpURL)
 }
 
+// ---------------------------------------------------------- driver choice
+
+// DriverOption is one entry of the NVIDIA driver dropdown. Value is what
+// the installer script's --driver takes: "latest", or a branch number.
+type DriverOption struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note,omitempty"`
+}
+
+const (
+	// Every nvidia-utils build Arch ever released, listed as plain HTML.
+	archiveNvidiaURL = "https://archive.archlinux.org/packages/n/nvidia-utils/"
+	// SteamOS 3.8 ships 575.x itself — older branches are not worth offering.
+	oldestDriverBranch = 575
+	maxDriverBranches  = 6
+)
+
+// Only used when the Arch archive can't be reached (the build needs it too,
+// so this is a courtesy, not a real fallback). Branches never leave the
+// archive, so these stay valid; a newer one just won't be listed offline.
+var fallbackDriverBranches = []string{"610", "595", "590", "580", "575"}
+
+var nvidiaPkgRE = regexp.MustCompile(`nvidia-utils-(\d+)\.([\d.]+)-(\d+)-x86_64\.pkg\.tar\.zst`)
+
+// what --driver accepts besides "latest": 580, 580.105.08, 580.105.08-4
+var driverSpecRE = regexp.MustCompile(`^\d+(\.\d+)*(-\d+)?$`)
+
+// ListDriverOptions reads the Arch archive and returns the NVIDIA driver
+// branches the user can pick from, newest first, after "Latest".
+func (a *App) ListDriverOptions() []DriverOption {
+	opts := []DriverOption{{
+		Value: "latest",
+		Label: "Latest (recommended)",
+		Note:  "whatever Arch Linux ships on the day you build",
+	}}
+
+	branches, newest, err := fetchDriverBranches(a.ctx)
+	if err != nil {
+		for _, b := range fallbackDriverBranches {
+			opts = append(opts, DriverOption{Value: b, Label: b + " branch"})
+		}
+		opts[0].Note = "could not reach the Arch archive (" + err.Error() + ") — versions not shown"
+		return markSteamOSBranch(opts)
+	}
+	for _, b := range branches {
+		opts = append(opts, DriverOption{Value: b, Label: b + " branch — newest is " + newest[b]})
+	}
+	return markSteamOSBranch(opts)
+}
+
+func markSteamOSBranch(opts []DriverOption) []DriverOption {
+	for i := range opts {
+		if opts[i].Value == "575" {
+			opts[i].Note = "the branch SteamOS itself ships"
+		}
+	}
+	return opts
+}
+
+// fetchDriverBranches returns branch numbers (newest first) and the newest
+// full version within each.
+func fetchDriverBranches(ctx context.Context) ([]string, map[string]string, error) {
+	body, err := fetchLarge(ctx, archiveNvidiaURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	newest := map[string]string{}
+	for _, m := range nvidiaPkgRE.FindAllStringSubmatch(body, -1) {
+		branch, ver := m[1], m[1]+"."+m[2]+"-"+m[3]
+		if n, err := strconv.Atoi(branch); err != nil || n < oldestDriverBranch {
+			continue
+		}
+		if cur, ok := newest[branch]; !ok || cmpPkgVer(ver, cur) > 0 {
+			newest[branch] = ver
+		}
+	}
+	if len(newest) == 0 {
+		return nil, nil, errors.New("no driver packages found in the archive listing")
+	}
+	branches := make([]string, 0, len(newest))
+	for b := range newest {
+		branches = append(branches, b)
+	}
+	sort.Slice(branches, func(i, j int) bool {
+		bi, _ := strconv.Atoi(branches[i])
+		bj, _ := strconv.Atoi(branches[j])
+		return bi > bj
+	})
+	if len(branches) > maxDriverBranches {
+		branches = branches[:maxDriverBranches]
+	}
+	return branches, newest, nil
+}
+
+// cmpPkgVer compares pacman-style "580.105.08-4" versions field by field.
+func cmpPkgVer(a, b string) int {
+	fa := strings.FieldsFunc(a, func(r rune) bool { return r == '.' || r == '-' })
+	fb := strings.FieldsFunc(b, func(r rune) bool { return r == '.' || r == '-' })
+	for i := 0; i < len(fa) && i < len(fb); i++ {
+		na, _ := strconv.Atoi(fa[i])
+		nb, _ := strconv.Atoi(fb[i])
+		if na != nb {
+			if na > nb {
+				return 1
+			}
+			return -1
+		}
+	}
+	return len(fa) - len(fb)
+}
+
+// fetchLarge is fetchString without the 4 KB cap (archive listings are big).
+func fetchLarge(ctx context.Context, url string) (string, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %s", resp.Status)
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	return string(b), err
+}
+
 // ----------------------------------------------------------------- build
 
 type BuildOptions struct {
 	ImagePath  string `json:"imagePath"`
 	UpdateMode string `json:"updateMode"` // selfheal | hold | stock
+	Driver     string `json:"driver"`     // latest | branch (e.g. "580")
 	TrimCuda   bool   `json:"trimCuda"`
 	SkipSig    bool   `json:"skipSig"`
 }
@@ -683,6 +813,15 @@ func (a *App) runBuild(ctx context.Context, opts BuildOptions) error {
 		args = append(args, "--hold-updates")
 	case "stock":
 		args = append(args, "--no-hold-updates")
+	}
+	// Guard the shell-quoted pass-through: the script only ever takes
+	// "latest" or a version prefix anyway.
+	if d := strings.TrimSpace(opts.Driver); d != "" && d != "latest" {
+		if !driverSpecRE.MatchString(d) {
+			return fmt.Errorf("invalid driver version %q", d)
+		}
+		args = append(args, "--driver", d)
+		log("NVIDIA driver: " + d + " branch (pinned from the Arch archive)")
 	}
 	if opts.TrimCuda {
 		args = append(args, "--trim-cuda")
