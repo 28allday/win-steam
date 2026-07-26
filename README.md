@@ -18,13 +18,18 @@ locally on their machine.
 
 ## Download
 
-Grab `SNGI.exe` from the
-[latest release](https://github.com/28allday/win-steam/releases/latest) —
-no install, no dependencies (WebView2 ships with Windows 10/11; the app
-installs WSL2 itself if missing). Run it and follow the wizard.
+Grab `SNGI.zip` from the
+[latest release](https://github.com/28allday/win-steam/releases/latest)
+and extract it (or download `SNGI.exe` directly — some browsers block bare
+exe downloads; the zip avoids that). No install, no dependencies (WebView2
+ships with Windows 10/11; the app installs WSL2 itself if missing). Run it
+and follow the wizard.
 
 The exe is unsigned, so Windows SmartScreen will warn on first run: click
-**More info → Run anyway**.
+**More info → Run anyway**. If Defender quarantines it, that's a false
+positive on the unsigned Go binary — every release is built from this
+repo with `build.sh`, and the SHA-256 of the exe is listed in the release
+notes so you can verify the download.
 
 ## How it works
 

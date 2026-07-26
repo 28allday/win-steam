@@ -14,5 +14,10 @@ GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
   -ldflags "-w -s -H windowsgui" \
   -o dist/SNGI.exe .
 
-echo "[build] Done: dist/SNGI.exe"
-ls -lh dist/SNGI.exe
+echo "[build] Zipping (browsers sometimes block bare exe downloads)"
+rm -f dist/SNGI.zip
+zip -j -X dist/SNGI.zip dist/SNGI.exe
+
+echo "[build] Done: dist/SNGI.exe + dist/SNGI.zip"
+ls -lh dist/SNGI.exe dist/SNGI.zip
+sha256sum dist/SNGI.exe

@@ -81,10 +81,20 @@ along the way — all would have hit every real Windows user.
 
 ```bash
 cd ~/Projects/win_steam
-./build.sh                                   # → dist/SNGI.exe
+./build.sh                                   # → dist/SNGI.exe + dist/SNGI.zip
 git tag v0.1.1 && git push origin master v0.1.1
-gh release create v0.1.1 dist/SNGI.exe --title "SNGI v0.1.1" --notes "..."
+gh release create v0.1.1 dist/SNGI.exe dist/SNGI.zip --title "SNGI v0.1.1" --notes "..."
 ```
+
+Attach BOTH assets: the zip is the primary download (browsers sometimes
+block bare exe downloads; Defender/SmartScreen behave the same either way,
+it's only the download-block it dodges). Put the exe's SHA-256 (build.sh
+prints it) in the release notes, and mention the SmartScreen/Defender
+false-positive in the Download section — see v0.1.1's notes for wording.
+For each release, consider submitting the new exe to Microsoft as a
+false positive: <https://www.microsoft.com/en-us/wdsi/filesubmission>
+(per-hash, clears in ~1-3 days). Long-term fix = code signing
+(SignPath Foundation free-for-OSS, or Azure Trusted Signing).
 
 Identity: 28allday / gavin.nugent@hey.com (desktop global — already right).
 
