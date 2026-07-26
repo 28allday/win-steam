@@ -174,3 +174,6 @@ target disk.
 ## License
 
 [MIT](LICENSE) — not affiliated with or endorsed by Valve, NVIDIA, or Microsoft.
+
+Releases are currently unsigned — see [CODE_SIGNING.md](CODE_SIGNING.md)
+for the code-signing policy (SignPath Foundation application pending).
