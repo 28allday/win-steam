@@ -170,3 +170,7 @@ flag is harmless.)
 Use at your own risk. SteamOS is Valve's; the NVIDIA driver is NVIDIA's.
 Flashing erases the selected USB drive; installing SteamOS erases the selected
 target disk.
+
+## License
+
+[MIT](LICENSE) — not affiliated with or endorsed by Valve, NVIDIA, or Microsoft.
