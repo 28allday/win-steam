@@ -18,6 +18,12 @@ locally on their machine.
 
 ## Download
 
+> **⏸️ Downloads temporarily offline.** Windows Defender has been flagging the
+> unsigned exe as a false positive, so releases are pulled while the app goes
+> through [SignPath Foundation](https://signpath.org) code signing. Signed
+> builds will be republished here once that's approved. In the meantime you
+> can build from source with `./build.sh` (see below).
+
 Grab `SNGI.zip` from the
 [latest release](https://github.com/28allday/win-steam/releases/latest)
 and extract it (or download `SNGI.exe` directly — some browsers block bare
