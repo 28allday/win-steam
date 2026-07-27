@@ -71,6 +71,21 @@ function setProgress(prefix, cur, total) {
     total > 0 ? `${fmtMB(cur)} / ${fmtMB(total)}  (${pct.toFixed(0)}%)` : fmtMB(cur);
 }
 
+/* --------------------------------------------------- backend helpers */
+
+// Wails rejects the promise for a bound method whose only return value is a
+// non-nil error — it never resolves with it — so `const err = await Start…()`
+// would throw straight past the caller's error branch, leaving the button
+// stuck disabled and nothing in the log. Every Start* call goes through here.
+async function startOp(fn) {
+  try {
+    const r = await fn();
+    return r ? String(r) : null;
+  } catch (e) {
+    return String((e && e.message) || e);
+  }
+}
+
 /* ----------------------------------------------------- double confirm */
 
 function armConfirm(btn, armedLabel, fn) {
@@ -134,7 +149,7 @@ $("btn-recheck").addEventListener("click", recheck);
 $("btn-install-wsl").addEventListener("click", async () => {
   $("wsl-logwrap").classList.remove("hidden");
   $("btn-install-wsl").disabled = true;
-  const err = await App().StartWSLInstall();
+  const err = await startOp(() => App().StartWSLInstall());
   if (err) { appendLog("wsl-log", err, "err"); $("btn-install-wsl").disabled = false; }
 });
 
@@ -147,7 +162,7 @@ $("btn-check-next").addEventListener("click", () => {
 $("btn-setup").addEventListener("click", async () => {
   $("btn-setup").disabled = true;
   $("btn-setup-cancel").classList.remove("hidden");
-  const err = await App().StartSetup();
+  const err = await startOp(() => App().StartSetup());
   if (err) {
     appendLog("setup-log", err, "err");
     $("btn-setup").disabled = false;
@@ -225,7 +240,7 @@ $("btn-build").addEventListener("click", async () => {
   $("btn-build").disabled = true;
   $("btn-build-cancel").classList.remove("hidden");
   $("btn-build-next").disabled = true;
-  const err = await App().StartBuild(buildOpts());
+  const err = await startOp(() => App().StartBuild(buildOpts()));
   if (err) {
     appendLog("build-log", err, "err");
     $("btn-build").disabled = false;
@@ -302,7 +317,7 @@ $("btn-flash").addEventListener("click", (e) => {
     $("btn-flash").disabled = true;
     $("btn-refresh-disks").disabled = true;
     $("btn-flash-cancel").classList.remove("hidden");
-    const err = await App().StartFlash(state.disk);
+    const err = await startOp(() => App().StartFlash(state.disk));
     if (err) {
       appendLog("flash-log", err, "err");
       $("btn-flash").disabled = false;
