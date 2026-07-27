@@ -18,12 +18,6 @@ locally on their machine.
 
 ## Download
 
-> **⏸️ Downloads temporarily offline.** Windows Defender has been flagging the
-> unsigned exe as a false positive, so releases are pulled while the app goes
-> through [SignPath Foundation](https://signpath.org) code signing. Signed
-> builds will be republished here once that's approved. In the meantime you
-> can build from source with `./build.sh` (see below).
-
 Grab `SNGI.zip` from the
 [latest release](https://github.com/28allday/win-steam/releases/latest)
 and extract it (or download `SNGI.exe` directly — some browsers block bare
@@ -32,10 +26,13 @@ ships with Windows 10/11; the app installs WSL2 itself if missing). Run it
 and follow the wizard.
 
 The exe is unsigned, so Windows SmartScreen will warn on first run: click
-**More info → Run anyway**. If Defender quarantines it, that's a false
-positive on the unsigned Go binary — every release is built from this
+**More info → Run anyway**. An earlier Defender false positive on the
+v0.1.1 exe was [reviewed and cleared by Microsoft](https://www.microsoft.com/en-us/wdsi/filesubmission)
+(2026-07-27); if your machine still flags it from cached definitions, update
+them with `MpCmdRun.exe -SignatureUpdate`. Every release is built from this
 repo with `build.sh`, and the SHA-256 of the exe is listed in the release
-notes so you can verify the download.
+notes so you can verify the download. Code signing via
+[SignPath Foundation](https://signpath.org) is in progress.
 
 ## How it works
 
