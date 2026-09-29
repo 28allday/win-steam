@@ -68,7 +68,7 @@ has been committed or pushed for this feature.
 # SNGI — session 3 notes (2026-07-19)
 
 **PUBLISHED.** Public repo at <https://github.com/28allday/win-steam>
-(28allday GitHub ONLY — no Forgejo mirror, per Gav). Release **v0.1.0**
+(28allday GitHub). Release **v0.1.0**
 is live with `SNGI.exe` attached; README "Download" section points at
 `releases/latest` and covers the SmartScreen warning.
 
